@@ -7,7 +7,7 @@ class BoundingBox(BaseModel):
     y: float
     width: float
     height: float
-    confidence: float
+    confidence: Optional[float] = 1.0  # Make confidence optional with default
     category: Optional[str] = None
     class_name: Optional[str] = None
 

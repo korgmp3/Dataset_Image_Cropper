@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import os
 import mimetypes
+from datetime import datetime
 
 from app.models.database import get_db, ImageProgress, ProcessingLog
 from app.models.schemas import CropRequest, FolderRequest, ProcessingStatus
@@ -59,11 +60,17 @@ def set_image_folder(request: FolderRequest, db: Session = Depends(get_db)):
 def get_current_image():
     global current_images, current_index
     
+    print(f"DEBUG: get_current_image - images={len(current_images) if current_images else 0}, index={current_index}")
+    
     if not current_images or current_index >= len(current_images):
+        print(f"DEBUG: No more images to process")
         return {"image_path": None, "index": current_index, "total": len(current_images)}
     
+    current_image = current_images[current_index]
+    print(f"DEBUG: Returning image {current_index + 1} of {len(current_images)}: {current_image}")
+    
     return {
-        "image_path": current_images[current_index],
+        "image_path": current_image,
         "index": current_index,
         "total": len(current_images)
     }
@@ -78,20 +85,36 @@ def get_current_image():
 def crop_and_save_image(request: CropRequest, db: Session = Depends(get_db)):
     global current_index, current_images
     
+    print(f"DEBUG: Crop request for image {current_index + 1} of {len(current_images)}")
+    
     try:
         # Crop and save
         saved_paths = cropper.crop_and_save(request.image_path, request.boxes, db)
         
-        # Mark image as processed
-        progress_entry = ImageProgress(
-            image_path=request.image_path,
-            processed=True
-        )
-        db.add(progress_entry)
+        # Check if image is already in progress table
+        existing_progress = db.query(ImageProgress).filter(
+            ImageProgress.image_path == request.image_path
+        ).first()
+        
+        if existing_progress:
+            # Update existing entry
+            existing_progress.processed = True
+            existing_progress.timestamp = datetime.now()
+            print(f"DEBUG: Updated existing progress entry for {request.image_path}")
+        else:
+            # Create new entry
+            progress_entry = ImageProgress(
+                image_path=request.image_path,
+                processed=True
+            )
+            db.add(progress_entry)
+            print(f"DEBUG: Created new progress entry for {request.image_path}")
+        
         db.commit()
         
         # Move to next image
         current_index += 1
+        print(f"DEBUG: Moved to next image, current_index={current_index}")
         
         return {
             "message": "Image processed successfully",
@@ -99,11 +122,14 @@ def crop_and_save_image(request: CropRequest, db: Session = Depends(get_db)):
             "next_index": current_index
         }
     except Exception as e:
+        print(f"DEBUG: Error in crop_and_save: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/skip")
 def skip_image(image_path: str, reason: str = "user_skipped", db: Session = Depends(get_db)):
     global current_index
+    
+    print(f"DEBUG: Skip request for image {current_index + 1} of {len(current_images)}, reason={reason}")
     
     # Log skip
     log_entry = ProcessingLog(
@@ -114,15 +140,30 @@ def skip_image(image_path: str, reason: str = "user_skipped", db: Session = Depe
     )
     db.add(log_entry)
     
-    # Mark as processed
-    progress_entry = ImageProgress(
-        image_path=image_path,
-        processed=True
-    )
-    db.add(progress_entry)
+    # Check if image is already in progress table
+    existing_progress = db.query(ImageProgress).filter(
+        ImageProgress.image_path == image_path
+    ).first()
+    
+    if existing_progress:
+        # Update existing entry
+        existing_progress.processed = True
+        existing_progress.timestamp = datetime.now()
+        print(f"DEBUG: Updated existing progress entry for {image_path}")
+    else:
+        # Create new entry
+        progress_entry = ImageProgress(
+            image_path=image_path,
+            processed=True
+        )
+        db.add(progress_entry)
+        print(f"DEBUG: Created new progress entry for {image_path}")
+    
     db.commit()
     
     current_index += 1
+    print(f"DEBUG: Moved to next image, current_index={current_index}")
+    
     return {"message": "Image skipped", "next_index": current_index}
 
 @router.get("/progress", response_model=ProcessingStatus)

@@ -922,3 +922,63 @@ h1 {
 .status-text {
   font-style: italic;
 }
+
+/* Toast Notifications */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: toastSlideIn 0.3s ease-out;
+  max-width: 400px;
+  word-wrap: break-word;
+}
+
+.toast-notification.success {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  color: white;
+  border-left: 4px solid #1e8449;
+}
+
+.toast-notification.error {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+  border-left: 4px solid #a93226;
+}
+
+.toast-notification.info {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border-left: 4px solid #1f618d;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.toast-notification.fade-out {
+  animation: toastSlideOut 0.3s ease-in forwards;
+}

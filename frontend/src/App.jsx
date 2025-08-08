@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import BoundingBoxEditor from './components/BoundingBoxEditor';
 import { 
   getCurrentImage, 
-  // detectObjects, // Disabled - no automatic detection
   cropAndSave, 
   skipImage, 
   getCategories,
@@ -32,11 +31,26 @@ export default function App() {
   // Add directory status state
   const [directoryStatus, setDirectoryStatus] = useState({});
 
+  // Toast notification state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  // Toast notification functions
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: 'success' });
+    }, 3000);
+  };
+
+  const showErrorToast = (message) => {
+    showToast(message, 'error');
+  };
+
   useEffect(() => {
     loadCurrentImage();
     loadCategories();
     loadProgress();
-    checkDirectoryStatus(); // Add this line
+    checkDirectoryStatus();
     
     // Auto-refresh progress every 5 seconds
     const interval = setInterval(loadProgress, 5000);
@@ -69,7 +83,6 @@ export default function App() {
       
       if (image && image.image_path) {
         setCurrentImage(image);
-        // runDetection(image.image_path); // Disabled - no automatic detection
       } else {
         // No more images to process
         setCurrentImage(null);
@@ -86,58 +99,53 @@ export default function App() {
     }
   };
 
-  // const runDetection = async (imagePath) => {
-  //   // Disabled - no automatic object detection
-  //   setDetections([]);
-  // };
-
   const handleSaveImage = async () => {
     if (!currentImage?.image_path) {
-      alert('No image loaded');
+      showErrorToast('No image loaded');
       return;
     }
 
     if (detections.length === 0) {
-      const proceed = confirm('No objects detected or created. Skip this image?');
-      if (proceed) {
-        await handleSkipImage('no_objects');
-        return;
-      } else {
-        return;
-      }
+      // Instead of confirm dialog, just skip automatically
+      await handleSkipImage('no_objects');
+      return;
     }
 
     const detectionsWithoutCategory = detections.filter(detection => !detection.category || detection.category.trim() === '');
     
     if (detectionsWithoutCategory.length > 0) {
-      alert(`Please assign categories to all bounding boxes before saving.\n${detectionsWithoutCategory.length} box(es) missing categories.`);
+      showErrorToast(`${detectionsWithoutCategory.length} box(es) missing categories. Please assign categories to all bounding boxes.`);
       return;
     }
 
     const validDetections = detections.filter(detection => detection.category && detection.category.trim() !== '');
     
     if (validDetections.length === 0) {
-      alert('Please assign at least one valid category before saving.');
+      showErrorToast('Please assign at least one valid category before saving.');
       return;
     }
 
     try {
-      await cropAndSave({
+      console.log('DEBUG: Starting crop and save...');
+      const result = await cropAndSave({
         image_path: currentImage.image_path,
         boxes: validDetections,
         categories: categories
       });
       
-      alert(`Image processed successfully! Saved ${validDetections.length} cropped image(s).`);
+      console.log('DEBUG: Crop and save result:', result);
+      showToast(`✅ Saved ${validDetections.length} cropped image(s)`);
       
       // Clear current detections and load next image
+      console.log('DEBUG: Clearing detections and loading next image...');
       setDetections([]);
       await loadCurrentImage();
       
       // Update progress after processing
       loadProgress();
     } catch (error) {
-      alert('Error saving image: ' + error.message);
+      console.error('DEBUG: Error in handleSaveImage:', error);
+      showErrorToast('Error saving image: ' + error.message);
     }
   };
 
@@ -145,16 +153,23 @@ export default function App() {
     if (!currentImage?.image_path) return;
 
     try {
-      await skipImage(currentImage.image_path, reason);
+      console.log('DEBUG: Starting skip image...');
+      const result = await skipImage(currentImage.image_path, reason);
+      
+      console.log('DEBUG: Skip image result:', result);
+      
+      showToast('⏭️ Image skipped');
       
       // Clear current detections and load next image
+      console.log('DEBUG: Clearing detections and loading next image...');
       setDetections([]);
       await loadCurrentImage();
       
       // Update progress after skipping
       loadProgress();
     } catch (error) {
-      alert('Error skipping image: ' + error.message);
+      console.error('DEBUG: Error in handleSkipImage:', error);
+      showErrorToast('Error skipping image: ' + error.message);
     }
   };
 
@@ -167,7 +182,7 @@ export default function App() {
     setLoading(true);
     try {
       const result = await setImageFolder(folderPath);
-      alert(result.message);
+      showToast('📁 Folder set successfully');
       
       // Reset state and reload everything
       setDetections([]);
@@ -175,7 +190,7 @@ export default function App() {
       await loadProgress();
       await loadCurrentImage();
     } catch (error) {
-      alert('Error setting folder: ' + error.message);
+      showErrorToast('Error setting folder: ' + error.message);
     }
     setLoading(false);
   };
@@ -205,6 +220,7 @@ export default function App() {
       setCategories(updatedCategories);
       updateCategories(updatedCategories);
       setNewCategory('');
+      showToast(`🏷️ Category "${newCategory.trim()}" added`);
     }
   };
 
@@ -212,15 +228,16 @@ export default function App() {
     const updatedCategories = categories.filter(cat => cat !== categoryToRemove);
     setCategories(updatedCategories);
     updateCategories(updatedCategories);
+    showToast(`🗑️ Category "${categoryToRemove}" removed`);
   };
 
   const handleExtractFromFolder = async () => {
     try {
       const extracted = await extractCategoriesFromFolder(categoryFolderPath);
       setCategories(extracted);
-      alert(`Extracted ${extracted.length} categories from folder structure`);
+      showToast(`📂 Extracted ${extracted.length} categories from folder`);
     } catch (error) {
-      alert('Error extracting categories: ' + error.message);
+      showErrorToast('Error extracting categories: ' + error.message);
     }
   };
 
@@ -237,6 +254,13 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`toast-notification ${toast.type}`}>
+          {toast.message}
+        </div>
+      )}
+      
       <div className="app-header">
         <h1>Image Cropping & Dataset Creator</h1>
         <div className="version-info">
@@ -349,8 +373,14 @@ export default function App() {
                     onChange={(e) => setConfidence(parseFloat(e.target.value))}
                   />
                 </label>
-                <button onClick={() => runDetection(currentImage.image_path)} disabled={loading}>
-                  {loading ? 'Detecting...' : 'Re-run Detection'}
+                <button onClick={() => handleSkipImage('poor_quality')} className="skip-btn">
+                  🚫 Skip - Poor Quality
+                </button>
+                <button onClick={() => handleSkipImage('no_objects')} className="skip-btn">
+                  👻 Skip - No Objects
+                </button>
+                <button onClick={() => handleSkipImage('user_skipped')} className="skip-btn">
+                  ⏭️ Skip - Other
                 </button>
               </div>
             </div>
