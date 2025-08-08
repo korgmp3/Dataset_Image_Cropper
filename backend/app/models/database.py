@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 import os
+import json
 
 DATABASE_URL = "sqlite:////app/data/image_crop.db"
 engine = create_engine(DATABASE_URL)
@@ -13,18 +14,24 @@ class ProcessingLog(Base):
     __tablename__ = "processing_logs"
     
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
     source_image_path = Column(String, nullable=False)
     source_image_name = Column(String, nullable=False)
-    rectangle_id = Column(Integer, nullable=True)
-    x_coordinate = Column(Float, nullable=True)
-    y_coordinate = Column(Float, nullable=True)
-    width = Column(Float, nullable=True)
-    height = Column(Float, nullable=True)
-    assigned_category = Column(String, nullable=True)
-    output_image_path = Column(String, nullable=True)
-    processing_status = Column(String, nullable=False)  # extracted/skipped/no_objects
+    cropped_image_path = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+    bounding_box_data = Column(Text, nullable=True)  # JSON string for box coordinates
+    processing_status = Column(String, nullable=False)  # "processed", "skipped"
     skip_reason = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=datetime.now)
+    
+    def set_bounding_box_data(self, box_data):
+        """Store bounding box data as JSON string"""
+        self.bounding_box_data = json.dumps(box_data)
+    
+    def get_bounding_box_data(self):
+        """Retrieve bounding box data from JSON string"""
+        if self.bounding_box_data:
+            return json.loads(self.bounding_box_data)
+        return None
 
 class ImageProgress(Base):
     __tablename__ = "image_progress"

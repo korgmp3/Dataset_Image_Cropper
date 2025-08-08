@@ -42,13 +42,21 @@ export default function App() {
     showToast(message, 'error');
   };
 
+  // Check if processing is complete
+  const [isComplete, setIsComplete] = useState(false);
+  const [showReportButton, setShowReportButton] = useState(false);
+
   useEffect(() => {
     loadCurrentImage();
     loadCategories();
     loadProgress();
+    checkCompletion(); // Add this line
     
-    // Auto-refresh progress every 5 seconds
-    const interval = setInterval(loadProgress, 5000);
+    // Auto-refresh progress and completion every 5 seconds
+    const interval = setInterval(() => {
+      loadProgress();
+      checkCompletion(); // Add this line
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -278,6 +286,116 @@ export default function App() {
     showToast(`🗑️ Removed Box ${indexToRemove + 1}`);
   };
 
+  // Check if processing is complete
+  const checkCompletion = async () => {
+    try {
+      const response = await fetch('/api/images/is-complete');
+      const data = await response.json();
+      setIsComplete(data.is_complete);
+      setShowReportButton(data.is_complete);
+    } catch (error) {
+      console.error('Error checking completion:', error);
+    }
+  };
+
+  // Generate and download report
+  const generateReport = async () => {
+    try {
+      const response = await fetch('/api/images/generate-report');
+      
+      if (response.ok) {
+        // Get filename from response headers
+        const contentDisposition = response.headers.get('content-disposition');
+        let filename = 'processing_report.csv';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create blob and download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showToast('📊 Report downloaded successfully!');
+      } else {
+        showErrorToast('Error generating report');
+      }
+    } catch (error) {
+      console.error('Error generating report:', error);
+      showErrorToast('Error generating report: ' + error.message);
+    }
+  };
+
+  // Add debug function
+  const debugStatus = async () => {
+    try {
+      const response = await fetch('/api/images/debug-status');
+      const data = await response.json();
+      console.log('DEBUG STATUS:', data);
+      showToast('Debug info logged to console');
+    } catch (error) {
+      console.error('Error getting debug status:', error);
+      showErrorToast('Error getting debug status');
+    }
+  };
+
+  // Add reset function
+  const resetSession = async () => {
+    try {
+      const response = await fetch('/api/images/reset-session', {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        showToast('🔄 Session reset successfully');
+        // Reload current image and progress
+        await loadCurrentImage();
+        await loadProgress();
+        await checkCompletion();
+      } else {
+        showErrorToast('Error resetting session');
+      }
+    } catch (error) {
+      console.error('Error resetting session:', error);
+      showErrorToast('Error resetting session: ' + error.message);
+    }
+  };
+
+  // Add clear database function
+  const clearDatabase = async () => {
+    if (!confirm('Are you sure you want to clear all database data? This cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/images/clear-database', {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        showToast('🗑️ Database cleared successfully');
+        // Reload everything
+        await loadCurrentImage();
+        await loadProgress();
+        await checkCompletion();
+      } else {
+        showErrorToast('Error clearing database');
+      }
+    } catch (error) {
+      console.error('Error clearing database:', error);
+      showErrorToast('Error clearing database: ' + error.message);
+    }
+  };
+
   return (
     <div className="app">
       {/* Toast Notification */}
@@ -294,6 +412,46 @@ export default function App() {
           <span className="version-date">{APP_VERSION.buildDate}</span>
         </div>
       </div>
+      
+      {/* Debug buttons */}
+      <div className="debug-section">
+        <button onClick={debugStatus} className="debug-btn">
+          🔍 Debug Status
+        </button>
+        <button onClick={resetSession} className="reset-btn">
+          🔄 Reset Session
+        </button>
+      </div>
+      
+      {/* Report Generation Button */}
+      {showReportButton && (
+        <div className="report-section">
+          <div className="report-notification">
+            <h3>✅ All Images Processed!</h3>
+            <p>All images in the current folder have been processed.</p>
+            <div className="report-buttons">
+              <button 
+                onClick={generateReport}
+                className="generate-report-btn"
+              >
+                📊 Generate Processing Report
+              </button>
+              <button 
+                onClick={resetSession}
+                className="reset-session-btn"
+              >
+                🔄 Reset Session
+              </button>
+              <button 
+                onClick={clearDatabase}
+                className="clear-db-btn"
+              >
+                🗑️ Clear Database
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="main-layout">
         {/* Left side - Tools */}

@@ -1103,3 +1103,126 @@ h1 {
 .box-btn.selected:hover {
   background-color: #0056b3;
 }
+
+/* Report Generation Section */
+.report-section {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  color: white;
+  padding: 20px;
+  margin: 20px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.report-notification h3 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.report-notification p {
+  margin: 0 0 20px 0;
+  opacity: 0.9;
+}
+
+.generate-report-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.generate-report-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Report buttons container */
+.report-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.reset-session-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.reset-session-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.clear-db-btn {
+  background: rgba(231, 76, 60, 0.8);
+  color: white;
+  border: 2px solid rgba(231, 76, 60, 0.3);
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clear-db-btn:hover {
+  background: rgba(231, 76, 60, 0.9);
+  border-color: rgba(231, 76, 60, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Debug section */
+.debug-section {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 10px 20px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+}
+
+.debug-btn, .reset-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.debug-btn {
+  background-color: #6c757d;
+  color: white;
+}
+
+.debug-btn:hover {
+  background-color: #545b62;
+}
+
+.reset-btn {
+  background-color: #007bff;
+  color: white;
+}
+
+.reset-btn:hover {
+  background-color: #0056b3;
+}

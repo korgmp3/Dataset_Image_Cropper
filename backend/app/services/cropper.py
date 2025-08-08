@@ -3,9 +3,10 @@ import os
 from pathlib import Path
 from typing import List
 from app.models.schemas import BoundingBox
-from app.models.database import ProcessingLog, get_db
+from app.models.database import ProcessingLog
 from sqlalchemy.orm import Session
 from datetime import datetime
+import json
 
 class ImageCropper:
     def __init__(self, output_base_path: str):
@@ -81,37 +82,35 @@ class ImageCropper:
                     
                     print(f"✓ Saved crop: {output_path}")
                     
-                    # Log the operation
+                    # Log the operation with correct field names
                     log_entry = ProcessingLog(
                         source_image_path=image_path,
                         source_image_name=Path(image_path).name,
-                        rectangle_id=i,
-                        x_coordinate=box.x,
-                        y_coordinate=box.y,
-                        width=box.width,
-                        height=box.height,
-                        assigned_category=box.category,
-                        output_image_path=str(output_path),
-                        processing_status="extracted"
+                        cropped_image_path=str(output_path),
+                        category=box.category,
+                        processing_status="processed",
+                        timestamp=datetime.now()
                     )
+                    
+                    # Store bounding box data as JSON
+                    box_data = {
+                        'x': box.x,
+                        'y': box.y,
+                        'width': box.width,
+                        'height': box.height,
+                        'confidence': getattr(box, 'confidence', 1.0)
+                    }
+                    log_entry.set_bounding_box_data(box_data)
+                    
+                    # Add debug logging
+                    print(f"DEBUG: Storing box data for crop {i}: {box_data}")
+                    print(f"DEBUG: Stored box data: {log_entry.bounding_box_data}")
+                    
                     db.add(log_entry)
                     
                 except Exception as e:
                     print(f"✗ Error processing crop {i} for category {box.category}: {e}")
-                    # Log the error
-                    log_entry = ProcessingLog(
-                        source_image_path=image_path,
-                        source_image_name=Path(image_path).name,
-                        rectangle_id=i,
-                        x_coordinate=box.x,
-                        y_coordinate=box.y,
-                        width=box.width,
-                        height=box.height,
-                        assigned_category=box.category,
-                        output_image_path="",
-                        processing_status="error"
-                    )
-                    db.add(log_entry)
+                    continue
         
         db.commit()
         return saved_paths

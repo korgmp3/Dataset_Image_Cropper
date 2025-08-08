@@ -1,27 +1,5 @@
-import os
-from pathlib import Path
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-from app.models.database import Base, ProcessingLog, ImageProgress, DATABASE_URL
-
-def init_database():
-    """Initialize the database and create tables"""
-    try:
-        # Create database directory
-        db_dir = Path("/app/data")
-        db_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Create database engine
-        engine = create_engine(DATABASE_URL)
-        
-        # Create all tables
-        Base.metadata.create_all(bind=engine)
-        
-        print("✓ Database initialized successfully")
-        return True
-    except Exception as e:
-        print(f"✗ Error initializing database: {e}")
-        return False
+from app.models.database import DATABASE_URL
 
 def migrate_database():
     """Add missing columns to existing database tables"""
@@ -82,13 +60,5 @@ def migrate_database():
         conn.commit()
         print("Database migration completed successfully!")
 
-def initialize_database():
-    """Initialize database and run migrations"""
-    print("Initializing database...")
-    init_database()
-    print("Running database migrations...")
-    migrate_database()
-    print("Database initialization complete!")
-
 if __name__ == "__main__":
-    initialize_database()
+    migrate_database()

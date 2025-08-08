@@ -23,7 +23,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY app/ ./app/
+COPY ./app /app/app
+
+# Initialize database and run migrations
+RUN python -c "from app.init_db import initialize_database; initialize_database()"
 
 # Copy initialization scripts
 COPY app/init_dirs.py ./init_dirs.py
