@@ -17,6 +17,13 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
     drawCanvas();
   }, [image, detections, selectedBox]);
 
+  // Add effect to create default rectangle when image loads
+  useEffect(() => {
+    if (image && detections.length === 0) {
+      createDefaultRectangle();
+    }
+  }, [image, detections.length]);
+
   const loadImage = () => {
     const img = new Image();
     img.onload = () => {
@@ -33,6 +40,24 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
     // Use converted endpoint for WebP files
     const endpoint = imagePath.toLowerCase().endsWith('.webp') ? 'serve-converted' : 'serve';
     img.src = `/api/images/${endpoint}?path=${encodeURIComponent(imagePath)}`;
+  };
+
+  // Function to create default rectangle
+  const createDefaultRectangle = () => {
+    if (!image) return;
+    
+    const defaultDetection = {
+      x: image.width / 2, // Center X
+      y: image.height / 2, // Center Y
+      width: image.width / 2, // Half width
+      height: image.height / 2, // Half height
+      confidence: 1.0,
+      class_name: "default",
+      category: defaultCategory || null
+    };
+    
+    onDetectionsChange([defaultDetection]);
+    setSelectedBox(0); // Select the default rectangle
   };
 
   const drawCanvas = () => {
@@ -118,15 +143,8 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
         ctx.fillRect(x - boxWidth/2, y - boxHeight/2 - 25, 120, 20);
         ctx.fillStyle = '#ffffff';
         ctx.font = '12px Arial';
-        ctx.fillText(detection.category, x - boxWidth/2 + 5, y - boxHeight/2 - 8);
+        ctx.fillText(detection.category, x - boxWidth/2 + 5, y - boxHeight/2 - 10);
       }
-
-      // Draw box number (top-right corner)
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillRect(x + boxWidth/2 - 30, y - boxHeight/2, 30, 20);
-      ctx.fillStyle = '#000000';
-      ctx.font = 'bold 12px Arial';
-      ctx.fillText(`#${index + 1}`, x + boxWidth/2 - 25, y - boxHeight/2 + 15);
     });
   };
 
