@@ -26,7 +26,6 @@ export default function App() {
   // Category management state
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState('');
-  const [categoryFolderPath, setCategoryFolderPath] = useState('/data/input');
 
   // Add directory status state
   const [directoryStatus, setDirectoryStatus] = useState({});
@@ -184,6 +183,16 @@ export default function App() {
       const result = await setImageFolder(folderPath);
       showToast('📁 Folder set successfully');
       
+      // Automatically extract categories from the folder structure
+      try {
+        const extracted = await extractCategoriesFromFolder(folderPath);
+        setCategories(extracted);
+        showToast(`📂 Extracted ${extracted.length} categories from folder structure`);
+      } catch (categoryError) {
+        console.error('Error extracting categories:', categoryError);
+        // Don't show error toast for category extraction - it's optional
+      }
+      
       // Reset state and reload everything
       setDetections([]);
       setCurrentImage(null);
@@ -229,16 +238,6 @@ export default function App() {
     setCategories(updatedCategories);
     updateCategories(updatedCategories);
     showToast(`🗑️ Category "${categoryToRemove}" removed`);
-  };
-
-  const handleExtractFromFolder = async () => {
-    try {
-      const extracted = await extractCategoriesFromFolder(categoryFolderPath);
-      setCategories(extracted);
-      showToast(`📂 Extracted ${extracted.length} categories from folder`);
-    } catch (error) {
-      showErrorToast('Error extracting categories: ' + error.message);
-    }
   };
 
   // Add function to check directory status
@@ -357,56 +356,16 @@ export default function App() {
             </div>
           </div>
 
-          {/* Detection Controls */}
-          {currentImage?.image_path && (
-            <div className="control-group">
-              <h3>🔍 Detection</h3>
-              <div className="detection-controls">
-                <label>
-                  Confidence: {confidence}
-                  <input 
-                    type="range" 
-                    min="0.1" 
-                    max="0.9" 
-                    step="0.05"
-                    value={confidence}
-                    onChange={(e) => setConfidence(parseFloat(e.target.value))}
-                  />
-                </label>
-                <button onClick={() => handleSkipImage('poor_quality')} className="skip-btn">
-                  🚫 Skip - Poor Quality
-                </button>
-                <button onClick={() => handleSkipImage('no_objects')} className="skip-btn">
-                  👻 Skip - No Objects
-                </button>
-                <button onClick={() => handleSkipImage('user_skipped')} className="skip-btn">
-                  ⏭️ Skip - Other
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Category Management */}
           <div className="control-group">
             <h3>🏷️ Categories</h3>
             
-            <div className="category-extract">
-              <label>Extract from folder:</label>
-              <input 
-                type="text"
-                value={categoryFolderPath}
-                onChange={(e) => setCategoryFolderPath(e.target.value)}
-                placeholder="/data/input"
-              />
-              <button onClick={handleExtractFromFolder}>Extract</button>
-            </div>
-
             <div className="category-add">
               <input 
                 type="text"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                placeholder="New category name"
+                placeholder="Add custom category"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
               />
               <button onClick={handleAddCategory}>Add</button>
@@ -420,6 +379,12 @@ export default function App() {
                 </div>
               ))}
             </div>
+            
+            {categories.length === 0 && (
+              <p style={{ color: '#666', fontStyle: 'italic', fontSize: '12px', marginTop: '10px' }}>
+                Categories will be automatically extracted when you set a folder
+              </p>
+            )}
           </div>
 
           {/* Directory Status */}
