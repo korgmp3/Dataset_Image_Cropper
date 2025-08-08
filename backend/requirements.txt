@@ -1,0 +1,12 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+gunicorn==21.2.0
+python-dotenv==1.0.0
+sqlalchemy==2.0.23
+pandas==2.0.3
+pillow==10.1.0
+opencv-python==4.8.1.78
+numpy==1.24.3
+# torch==2.1.0  # Commented out - not using object detection
+# torchvision==0.16.0  # Commented out - not using object detection
+python-multipart==0.0.6
