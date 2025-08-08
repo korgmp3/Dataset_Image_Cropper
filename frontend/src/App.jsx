@@ -27,9 +27,6 @@ export default function App() {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState('');
 
-  // Add directory status state
-  const [directoryStatus, setDirectoryStatus] = useState({});
-
   // Toast notification state
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -49,7 +46,6 @@ export default function App() {
     loadCurrentImage();
     loadCategories();
     loadProgress();
-    checkDirectoryStatus();
     
     // Auto-refresh progress every 5 seconds
     const interval = setInterval(loadProgress, 5000);
@@ -240,15 +236,46 @@ export default function App() {
     showToast(`🗑️ Category "${categoryToRemove}" removed`);
   };
 
-  // Add function to check directory status
-  const checkDirectoryStatus = async () => {
-    try {
-      const response = await fetch('/api/health');
-      const healthData = await response.json();
-      setDirectoryStatus(healthData.directories || {});
-    } catch (error) {
-      console.error('Error checking directory status:', error);
+  // Add state for selected box
+  const [selectedBox, setSelectedBox] = useState(null);
+
+  // Add function to handle box selection
+  const handleSelectBox = (index) => {
+    setSelectedBox(index);
+  };
+
+  // Add function to handle adding rectangles
+  const handleAddRectangle = () => {
+    if (!currentImage?.image_path) return;
+    
+    const newDetection = {
+      x: 100, // Default position
+      y: 100,
+      width: 150,
+      height: 150,
+      confidence: 1.0,
+      class_name: "manual",
+      category: getDefaultCategory() || null
+    };
+    
+    const updatedDetections = [...detections, newDetection];
+    setDetections(updatedDetections);
+    setSelectedBox(updatedDetections.length - 1);
+  };
+
+  // Add function to remove a box
+  const handleRemoveBox = (indexToRemove) => {
+    const updatedDetections = detections.filter((_, index) => index !== indexToRemove);
+    setDetections(updatedDetections);
+    
+    // Adjust selected box if needed
+    if (selectedBox === indexToRemove) {
+      setSelectedBox(null);
+    } else if (selectedBox > indexToRemove) {
+      setSelectedBox(selectedBox - 1);
     }
+    
+    showToast(`🗑️ Removed Box ${indexToRemove + 1}`);
   };
 
   return (
@@ -269,44 +296,8 @@ export default function App() {
       </div>
       
       <div className="main-layout">
-        {/* Left side - Image */}
-        <div className="image-section">
-          {loading ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p>Loading next image...</p>
-            </div>
-          ) : !currentImage?.image_path ? (
-            <div className="no-image">
-              <h3>No Image Selected</h3>
-              <p>Set an input folder to start processing images</p>
-              {progress && progress.total_images === progress.processed_images && (
-                <p style={{ color: '#27ae60', fontWeight: 'bold', marginTop: '10px' }}>
-                  ✅ All images processed!
-                </p>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="image-info">
-                <h3>Current Image</h3>
-                <p>Image {currentImage.index + 1} of {currentImage.total}</p>
-                <p className="filename">{currentImage.image_path.split('/').pop()}</p>
-              </div>
-              
-              <BoundingBoxEditor 
-                imagePath={currentImage.image_path}
-                detections={detections}
-                categories={categories}
-                onDetectionsChange={updateDetections}
-                defaultCategory={getDefaultCategory()}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Right side - Controls */}
-        <div className="controls-section">
+        {/* Left side - Tools */}
+        <div className="tools-section">
           {/* Folder Management */}
           <div className="control-group">
             <h3>📁 Folder Setup</h3>
@@ -323,37 +314,7 @@ export default function App() {
               </button>
             </div>
             
-            {progress && (
-              <div className="progress-info">
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill" 
-                    style={{width: `${progress.progress_percentage}%`}}
-                  ></div>
-                </div>
-                <p className="progress-text">
-                  {progress.processed_images} of {progress.total_images} images 
-                  ({progress.progress_percentage.toFixed(1)}%)
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Version Information */}
-          <div className="control-group version-info-group">
-            <h3>ℹ️ Version Info</h3>
-            <div className="version-details">
-              <p><strong>Version:</strong> {APP_VERSION.version}</p>
-              <p><strong>Build Date:</strong> {APP_VERSION.buildDate}</p>
-              <div className="version-features">
-                <strong>Recent Updates:</strong>
-                <ul>
-                  {APP_VERSION.releaseNotes.slice(0, 3).map((note, index) => (
-                    <li key={index}>{note}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+            
           </div>
 
           {/* Category Management */}
@@ -386,22 +347,55 @@ export default function App() {
               </p>
             )}
           </div>
+        </div>
 
-          {/* Directory Status */}
-          <div className="control-group">
-            <h3>📁 Directory Status</h3>
-            <div className="directory-status">
-              {Object.entries(directoryStatus).map(([path, status]) => (
-                <div key={path} className={`status-item ${status}`}>
-                  <span className="status-icon">
-                    {status === 'writable' ? '✅' : status === 'exists_but_not_writable' ? '⚠️' : '❌'}
-                  </span>
-                  <span className="status-path">{path.split('/').pop()}</span>
-                  <span className="status-text">{status}</span>
-                </div>
-              ))}
+        {/* Center - Image */}
+        <div className="image-section">
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Loading next image...</p>
             </div>
-          </div>
+          ) : !currentImage?.image_path ? (
+            <div className="no-image">
+              <h3>No Image Selected</h3>
+              <p>Set an input folder to start processing images</p>
+              {progress && progress.total_images === progress.processed_images && (
+                <p style={{ color: '#27ae60', fontWeight: 'bold', marginTop: '10px' }}>
+                  ✅ All images processed!
+                </p>
+              )}
+            </div>
+          ) : (
+            <BoundingBoxEditor 
+              imagePath={currentImage.image_path}
+              detections={detections}
+              categories={categories}
+              onDetectionsChange={updateDetections}
+              defaultCategory={getDefaultCategory()}
+              selectedBox={selectedBox}
+              onSelectBox={handleSelectBox}
+              onAddRectangle={handleAddRectangle}
+            />
+          )}
+        </div>
+
+        {/* Right side - Info & Actions */}
+        <div className="actions-section">
+          {progress && (
+              <div className="progress-info">
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill" 
+                    style={{width: `${progress.progress_percentage}%`}}
+                  ></div>
+                </div>
+                <p className="progress-text">
+                  {progress.processed_images} of {progress.total_images} images 
+                  ({progress.progress_percentage.toFixed(1)}%)
+                </p>
+              </div>
+          )}
 
           {/* Action Buttons */}
           {currentImage?.image_path && (
@@ -435,6 +429,52 @@ export default function App() {
                 <button onClick={() => handleSkipImage('user_skipped')} className="skip-btn">
                   ⏭️ Skip - Other
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Detection Controls */}
+          {currentImage?.image_path && (
+            <div className="control-group">
+              <h3>🧠 Detection Controls</h3>
+              <div className="detection-controls">
+                <button 
+                  onClick={handleAddRectangle}
+                  className="add-rectangle-btn"
+                >
+                  ➕ Add Rectangle
+                </button>
+                
+                <div className="box-selection">
+                  {detections.map((detection, index) => (
+                    <div key={index} className="box-item">
+                      <button
+                        onClick={() => handleSelectBox(index)}
+                        className={`box-btn ${selectedBox === index ? 'selected' : ''}`}
+                      >
+                        Box {index + 1}
+                      </button>
+                      <button
+                        onClick={() => handleRemoveBox(index)}
+                        className="remove-box-btn"
+                        title={`Remove Box ${index + 1}`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Current Image Info */}
+          {currentImage?.image_path && (
+            <div className="control-group">
+              <h3>📷 Current Image</h3>
+              <div className="image-info">
+                <p><strong>Image:</strong> {currentImage.index + 1} of {currentImage.total}</p>
+                <p className="filename">{currentImage.image_path}</p>
               </div>
             </div>
           )}

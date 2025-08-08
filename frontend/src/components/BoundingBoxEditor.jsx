@@ -1,9 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function BoundingBoxEditor({ imagePath, detections, categories, onDetectionsChange, defaultCategory }) {
+export default function BoundingBoxEditor({ 
+  imagePath, 
+  detections, 
+  categories, 
+  onDetectionsChange, 
+  defaultCategory,
+  selectedBox,
+  onSelectBox,
+  onAddRectangle
+}) {
   const canvasRef = useRef(null);
   const [image, setImage] = useState(null);
-  const [selectedBox, setSelectedBox] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragStart, setDragStart] = useState(null);
@@ -23,6 +31,31 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
       createDefaultRectangle();
     }
   }, [image, detections.length]);
+
+  // Add global mouse event listeners for better resize control
+  useEffect(() => {
+    const handleGlobalMouseMove = (event) => {
+      if (isResizing || isDragging) {
+        handleMouseMove(event);
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (isResizing || isDragging) {
+        handleMouseUp();
+      }
+    };
+
+    if (isResizing || isDragging) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isResizing, isDragging]);
 
   const loadImage = () => {
     const img = new Image();
@@ -57,7 +90,7 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
     };
     
     onDetectionsChange([defaultDetection]);
-    setSelectedBox(0); // Select the default rectangle
+    onSelectBox(0); // Select the default rectangle
   };
 
   const drawCanvas = () => {
@@ -66,28 +99,26 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
 
     const ctx = canvas.getContext('2d');
     
-    // Calculate dimensions to maintain aspect ratio
-    const maxWidth = Math.min(800, window.innerWidth - 40);
-    const maxHeight = window.innerHeight - 300;
+    // Fixed dimensions for the center panel
+    const maxWidth = 560; // Fixed width for canvas (600px - 40px padding)
+    const maxHeight = 600; // Fixed max height
     
     let canvasWidth = image.width;
     let canvasHeight = image.height;
     
-    if (canvasWidth > maxWidth) {
-      const ratio = maxWidth / canvasWidth;
-      canvasWidth = maxWidth;
-      canvasHeight = canvasHeight * ratio;
-    }
+    // Calculate the scale to fit within max dimensions while maintaining aspect ratio
+    const scaleX = maxWidth / canvasWidth;
+    const scaleY = maxHeight / canvasHeight;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
     
-    if (canvasHeight > maxHeight) {
-      const ratio = maxHeight / canvasHeight;
-      canvasHeight = maxHeight;
-      canvasWidth = canvasWidth * ratio;
-    }
+    canvasWidth = Math.round(canvasWidth * scale);
+    canvasHeight = Math.round(canvasHeight * scale);
     
-    // Set both canvas resolution and display size
+    // Set canvas resolution (this is the actual canvas size)
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
+    
+    // Set display size (this is what the user sees)
     canvas.style.width = canvasWidth + 'px';
     canvas.style.height = canvasHeight + 'px';
 
@@ -170,17 +201,21 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
     ctx.fillRect(right - handleSize/2, centerY - handleSize/2, handleSize, handleSize);
   };
 
-  // FIXED: Proper coordinate conversion accounting for canvas scaling
   const getMousePos = (event) => {
     const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    
     const rect = canvas.getBoundingClientRect();
     
     // Get raw mouse coordinates relative to canvas element
-    const clientX = event.clientX - rect.left;
-    const clientY = event.clientY - rect.top;
+    let clientX = event.clientX - rect.left;
+    let clientY = event.clientY - rect.top;
+    
+    // Clamp coordinates to canvas bounds to prevent going outside
+    clientX = Math.max(0, Math.min(rect.width, clientX));
+    clientY = Math.max(0, Math.min(rect.height, clientY));
     
     // Scale coordinates to match canvas resolution
-    // This accounts for any difference between display size and canvas resolution
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     
@@ -204,7 +239,7 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
     const right = x + boxWidth/2;
     const top = y - boxHeight/2;
     const bottom = y + boxHeight/2;
-    const handleSize = 12;
+    const handleSize = 16; // Increased handle size for easier targeting
     
     // Check corner handles first (higher priority)
     if (Math.abs(mouseX - left) <= handleSize/2 && Math.abs(mouseY - top) <= handleSize/2) return 'top-left';
@@ -257,7 +292,7 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
     // Check if clicking on a box
     for (let i = 0; i < detections.length; i++) {
       if (isPointInBox(pos.x, pos.y, i)) {
-        setSelectedBox(i);
+        onSelectBox(i);
         setIsDragging(true);
         // Store both detection and mouse position for consistent reference
         setDragStart({
@@ -269,7 +304,7 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
     }
     
     // Clicked on empty space
-    setSelectedBox(null);
+    onSelectBox(null);
   };
 
   const handleMouseMove = (event) => {
@@ -285,6 +320,10 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
       const mouseXImg = (pos.x / canvas.width) * image.width;
       const mouseYImg = (pos.y / canvas.height) * image.height;
       
+      // Clamp mouse coordinates to image bounds
+      const clampedMouseX = Math.max(0, Math.min(image.width, mouseXImg));
+      const clampedMouseY = Math.max(0, Math.min(image.height, mouseYImg));
+      
       const newDetection = { ...originalDetection };
       
       // Calculate based on original detection bounds
@@ -295,43 +334,43 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
       
       switch (resizeHandle) {
         case 'top-left':
-          newDetection.width = Math.max(20, originalRight - mouseXImg);
-          newDetection.height = Math.max(20, originalBottom - mouseYImg);
-          newDetection.x = mouseXImg + newDetection.width/2;
-          newDetection.y = mouseYImg + newDetection.height/2;
+          newDetection.width = Math.max(20, originalRight - clampedMouseX);
+          newDetection.height = Math.max(20, originalBottom - clampedMouseY);
+          newDetection.x = clampedMouseX + newDetection.width/2;
+          newDetection.y = clampedMouseY + newDetection.height/2;
           break;
         case 'top-right':
-          newDetection.width = Math.max(20, mouseXImg - originalLeft);
-          newDetection.height = Math.max(20, originalBottom - mouseYImg);
+          newDetection.width = Math.max(20, clampedMouseX - originalLeft);
+          newDetection.height = Math.max(20, originalBottom - clampedMouseY);
           newDetection.x = originalLeft + newDetection.width/2;
-          newDetection.y = mouseYImg + newDetection.height/2;
+          newDetection.y = clampedMouseY + newDetection.height/2;
           break;
         case 'bottom-left':
-          newDetection.width = Math.max(20, originalRight - mouseXImg);
-          newDetection.height = Math.max(20, mouseYImg - originalTop);
-          newDetection.x = mouseXImg + newDetection.width/2;
+          newDetection.width = Math.max(20, originalRight - clampedMouseX);
+          newDetection.height = Math.max(20, clampedMouseY - originalTop);
+          newDetection.x = clampedMouseX + newDetection.width/2;
           newDetection.y = originalTop + newDetection.height/2;
           break;
         case 'bottom-right':
-          newDetection.width = Math.max(20, mouseXImg - originalLeft);
-          newDetection.height = Math.max(20, mouseYImg - originalTop);
+          newDetection.width = Math.max(20, clampedMouseX - originalLeft);
+          newDetection.height = Math.max(20, clampedMouseY - originalTop);
           newDetection.x = originalLeft + newDetection.width/2;
           newDetection.y = originalTop + newDetection.height/2;
           break;
         case 'top':
-          newDetection.height = Math.max(20, originalBottom - mouseYImg);
-          newDetection.y = mouseYImg + newDetection.height/2;
+          newDetection.height = Math.max(20, originalBottom - clampedMouseY);
+          newDetection.y = clampedMouseY + newDetection.height/2;
           break;
         case 'bottom':
-          newDetection.height = Math.max(20, mouseYImg - originalTop);
+          newDetection.height = Math.max(20, clampedMouseY - originalTop);
           newDetection.y = originalTop + newDetection.height/2;
           break;
         case 'left':
-          newDetection.width = Math.max(20, originalRight - mouseXImg);
-          newDetection.x = mouseXImg + newDetection.width/2;
+          newDetection.width = Math.max(20, originalRight - clampedMouseX);
+          newDetection.x = clampedMouseX + newDetection.width/2;
           break;
         case 'right':
-          newDetection.width = Math.max(20, mouseXImg - originalLeft);
+          newDetection.width = Math.max(20, clampedMouseX - originalLeft);
           newDetection.x = originalLeft + newDetection.width/2;
           break;
       }
@@ -372,7 +411,7 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
       if (handle) {
         canvas.style.cursor = getCursorForHandle(handle);
       } else {
-        // Check if over a box
+        // Check if mouse is over any box
         let overBox = false;
         for (let i = 0; i < detections.length; i++) {
           if (isPointInBox(pos.x, pos.y, i)) {
@@ -420,7 +459,7 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
   const removeDetection = (index) => {
     const updatedDetections = detections.filter((_, i) => i !== index);
     onDetectionsChange(updatedDetections);
-    setSelectedBox(null);
+    onSelectBox(null);
   };
 
   const addManualRectangle = () => {
@@ -438,11 +477,11 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
     
     const updatedDetections = [...detections, newDetection];
     onDetectionsChange(updatedDetections);
-    setSelectedBox(updatedDetections.length - 1);
+    onSelectBox(updatedDetections.length - 1);
   };
 
   const selectBox = (index) => {
-    setSelectedBox(index);
+    onSelectBox(index);
   };
 
   return (
@@ -453,185 +492,66 @@ export default function BoundingBoxEditor({ imagePath, detections, categories, o
           <p>Loading image...</p>
         </div>
       ) : (
-        <>
-          <div style={{ 
-            backgroundColor: '#e3f2fd', 
-            padding: '10px', 
-            borderRadius: '4px', 
-            marginBottom: '15px',
-            fontSize: '14px'
-          }}>
-            📝 <strong>Instructions:</strong> Click to select • Drag to move • Drag handles to resize • Click inside rectangle to change category
-          </div>
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <canvas 
-              ref={canvasRef}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              style={{ 
-                cursor: 'default',
-                border: '2px solid #dee2e6',
-                borderRadius: '4px',
-                display: 'block',
-                margin: '0 auto'
-              }}
-            />
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <canvas 
+            ref={canvasRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            style={{ 
+              cursor: 'default',
+              border: '2px solid #dee2e6',
+              borderRadius: '4px',
+              display: 'block',
+              margin: '0 auto'
+            }}
+          />
+          
+          {/* Floating category dropdowns inside rectangles */}
+          {image && detections.map((detection, index) => {
+            const canvas = canvasRef.current;
+            if (!canvas) return null;
             
-            {/* Floating category dropdowns inside rectangles */}
-            {image && detections.map((detection, index) => {
-              const canvas = canvasRef.current;
-              if (!canvas) return null;
-              
-              const x = (detection.x / image.width) * canvas.width;
-              const y = (detection.y / image.height) * canvas.height;
-              const boxWidth = (detection.width / image.width) * canvas.width;
-              const boxHeight = (detection.height / image.height) * canvas.height;
-              
-              // Center the dropdown in the rectangle
-              const dropdownX = x - 60; // Half of dropdown width (120px)
-              const dropdownY = y - 12; // Half of dropdown height (24px)
-              
-              return (
-                <select
-                  key={index}
-                  className="floating-category-dropdown"
-                  value={detection.category || ''}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    updateDetectionCategory(index, e.target.value);
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedBox(index);
-                  }}
-                  style={{
-                    position: 'absolute',
-                    left: `${dropdownX}px`,
-                    top: `${dropdownY}px`,
-                    width: '120px',
-                    height: '24px',
-                    pointerEvents: 'auto'
-                  }}
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              );
-            })}
-          </div>
-        </>
-      )}
-      
-      <div className="detection-controls">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <h4>Objects ({detections.length})</h4>
-          {image && (
-            <button 
-              onClick={addManualRectangle}
-              style={{
-                backgroundColor: '#4caf50',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              + Add Rectangle
-            </button>
-          )}
+            const x = (detection.x / image.width) * canvas.width;
+            const y = (detection.y / image.height) * canvas.height;
+            const boxWidth = (detection.width / image.width) * canvas.width;
+            const boxHeight = (detection.height / image.height) * canvas.height;
+            
+            // Center the dropdown in the rectangle
+            const dropdownX = x - 60; // Half of dropdown width (120px)
+            const dropdownY = y - 12; // Half of dropdown height (24px)
+            
+            return (
+              <select
+                key={index}
+                className="floating-category-dropdown"
+                value={detection.category || ''}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  updateDetectionCategory(index, e.target.value);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  selectBox(index);
+                }}
+                style={{
+                  position: 'absolute',
+                  left: `${dropdownX}px`,
+                  top: `${dropdownY}px`,
+                  width: '120px',
+                  height: '24px',
+                  pointerEvents: 'auto'
+                }}
+              >
+                <option value="">Select Category</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            );
+          })}
         </div>
-        
-        {detections.map((detection, index) => {
-          const hasCategory = detection.category && detection.category.trim() !== '';
-          return (
-            <div 
-              key={index} 
-              className={`detection-item ${selectedBox === index ? 'selected' : ''} ${!hasCategory ? 'missing-category' : ''}`}
-              style={{
-                backgroundColor: selectedBox === index ? '#e3f2fd' : (!hasCategory ? '#ffebee' : 'white'),
-                border: selectedBox === index ? '2px solid #2196f3' : (!hasCategory ? '2px solid #f44336' : '1px solid #ddd'),
-                padding: '10px',
-                margin: '5px 0',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-              onClick={() => selectBox(index)}
-            >
-              <div style={{ marginBottom: '5px' }}>
-                <strong>Box #{index + 1}</strong> - {detection.class_name} ({(detection.confidence * 100).toFixed(1)}%)
-                {!hasCategory && <span style={{ color: '#f44336', marginLeft: '10px' }}>⚠️ Category Required</span>}
-              </div>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>
-                Size: {Math.round(detection.width)} × {Math.round(detection.height)}px
-              </div>
-              
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <select 
-                  value={detection.category || ''}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    updateDetectionCategory(index, e.target.value);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '5px',
-                    borderRadius: '4px',
-                    border: !hasCategory ? '2px solid #f44336' : '1px solid #ddd',
-                    backgroundColor: !hasCategory ? '#ffebee' : 'white'
-                  }}
-                >
-                  <option value="">Select Category *</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-                
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeDetection(index);
-                  }}
-                  style={{
-                    backgroundColor: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    padding: '5px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-              
-              {!hasCategory && (
-                <div className="category-warning" style={{ color: '#f44336', fontSize: '12px', fontWeight: 'bold', marginTop: '5px' }}>
-                  ⚠️ Category assignment is required before saving
-                </div>
-              )}
-            </div>
-          );
-        })}
-        
-        {detections.length === 0 && (
-          <div style={{ 
-            color: '#666', 
-            textAlign: 'center', 
-            padding: '20px', 
-            backgroundColor: '#f9f9f9', 
-            borderRadius: '4px',
-            margin: '10px 0'
-          }}>
-            <p>No objects detected.</p>
-            <p>Click "Add Rectangle" to create manual bounding boxes.</p>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
