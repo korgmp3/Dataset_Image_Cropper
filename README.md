@@ -1,36 +1,30 @@
 # Image Cropping & Dataset Creator
 
-**Current Version:** v1.2.3 (2025-08-08)
+**Current Version:** v1.0.0 (2025-08-09)
 
 A Docker-based web application for creating image datasets by cropping objects and assigning categories.
 
 ## 📋 Version History
 
-### v1.2.3 (2025-08-08)
-- ✅ Enhanced Detection Controls with individual box removal
-- ✅ Improved UI layout with three-panel design
-- ✅ Added toast notifications for better user feedback
-- ✅ Automatic category extraction from folder structure
-- ✅ Default centered bounding box on image load
-- ✅ Disabled automatic object detection for faster builds
-- ✅ Fixed database consistency and image progression issues
-
-### v1.2.0 (2024-01-15)
-- ✅ Fixed bounding box resizing functionality
-- ✅ Improved image progression after save/skip
-- ✅ Enhanced WebP image support
-- ✅ Added single-window UI layout
-- ✅ Implemented mandatory category validation
-
-### v1.1.0 (2024-01-10)
-- ✅ Added manual bounding box creation
-- ✅ Implemented category management
-- ✅ Added progress tracking
-
-### v1.0.0 (2024-01-05)
-- ✅ Initial release with basic functionality
-- ✅ AI object detection
-- ✅ Image cropping and saving
+### v1.0.0 (2025-08-09) - Initial Release
+**Status:** Released (2-day development sprint)
+- ✨ **New Feature:** Docker-based web application with FastAPI backend and React frontend
+- ✨ **New Feature:** Manual bounding box creation and editing
+- ✨ **New Feature:** Interactive canvas-based image editing
+- ✨ **New Feature:** Category management with automatic extraction from folder structure
+- ✨ **New Feature:** Image cropping and saving to category-specific folders
+- ✨ **New Feature:** Progress tracking and session management
+- ✨ **New Feature:** Three-panel UI layout (tools, image, actions)
+- ✨ **New Feature:** Toast notifications for user feedback
+- ✨ **New Feature:** Default centered bounding box on image load
+- ✨ **New Feature:** Box selection, resizing, and dragging functionality
+- ✨ **New Feature:** WebP image format support
+- ✨ **New Feature:** CSV report generation for processing logs
+- ✨ **New Feature:** Database persistence with SQLite
+- ✨ **Technical:** Disabled AI object detection for faster builds (manual mode only)
+- 🔧 **Technical:** Docker Compose orchestration with health checks
+- 🔧 **Technical:** Nginx reverse proxy for frontend
+- 🔧 **Technical:** Comprehensive error handling and logging
 
 ## 🚀 Quick Start
 
@@ -241,3 +235,37 @@ If you encounter issues:
 1. Check the troubleshooting section above
 2. Review Docker logs: `docker-compose logs`
 3. Open an issue with detailed error information
+
+## 🎯 Development Timeline
+
+### Day 1 (2025-08-08)
+- ✅ **Project Setup**: Docker, FastAPI, React, SQLite
+- ✅ **Basic UI**: Three-panel layout, image display
+- ✅ **Core Functionality**: Image loading, bounding box creation
+- ✅ **Database**: SQLite setup with processing logs
+- ✅ **Docker**: Containerization and orchestration
+
+### Day 2 (2025-08-09)
+- ✅ **UI Enhancement**: Toast notifications, box selection
+- ✅ **Advanced Features**: Box resizing, dragging, category management
+- ✅ **Workflow**: Progress tracking, report generation
+- ✅ **Polish**: Error handling, documentation, testing
+- ✅ **Deployment**: Production-ready Docker setup
+
+## 🔮 Future Roadmap
+
+### Planned Features (v2.0.0+)
+- 🔮 **AI Object Detection**: Re-enabled with improved models
+- 🔮 **Batch Processing**: Multi-image simultaneous processing
+- 🔮 **Export Options**: Multiple output formats and metadata
+- 🔮 **Collaboration**: Multi-user support and sharing
+- 🔮 **Analytics**: Processing statistics and performance metrics
+- 🔮 **API Enhancement**: RESTful API for external integrations
+- 🔮 **Mobile Support**: Responsive design for mobile devices
+- 🔮 **Cloud Integration**: Cloud storage and processing support
+
+---
+
+*Project started: 2025-08-08*
+*Initial release: 2025-08-09*
+*Development time: 2 days*
