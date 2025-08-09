@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import BoundingBoxEditor from './components/BoundingBoxEditor';
 import { 
   getCurrentImage, 
@@ -45,6 +45,9 @@ export default function App() {
   // Check if processing is complete
   const [isComplete, setIsComplete] = useState(false);
   const [showReportButton, setShowReportButton] = useState(false);
+
+  // Add useRef to the imports at the top of the file
+  const boundingBoxRef = useRef();
 
   useEffect(() => {
     loadCurrentImage();
@@ -256,19 +259,9 @@ export default function App() {
   const handleAddRectangle = () => {
     if (!currentImage?.image_path) return;
     
-    const newDetection = {
-      x: 100, // Default position
-      y: 100,
-      width: 150,
-      height: 150,
-      confidence: 1.0,
-      class_name: "manual",
-      category: getDefaultCategory() || null
-    };
-    
-    const updatedDetections = [...detections, newDetection];
-    setDetections(updatedDetections);
-    setSelectedBox(updatedDetections.length - 1);
+    if (boundingBoxRef.current) {
+      boundingBoxRef.current.addRectangle();
+    }
   };
 
   // Add function to remove a box
@@ -526,6 +519,7 @@ export default function App() {
             </div>
           ) : (
             <BoundingBoxEditor 
+              ref={boundingBoxRef}
               imagePath={currentImage.image_path}
               detections={detections}
               categories={categories}
@@ -533,7 +527,6 @@ export default function App() {
               defaultCategory={getDefaultCategory()}
               selectedBox={selectedBox}
               onSelectBox={handleSelectBox}
-              onAddRectangle={handleAddRectangle}
             />
           )}
         </div>

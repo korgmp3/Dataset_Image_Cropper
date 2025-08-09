@@ -1,15 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 
-export default function BoundingBoxEditor({ 
+const BoundingBoxEditor = forwardRef(({ 
   imagePath, 
   detections, 
   categories, 
   onDetectionsChange, 
   defaultCategory,
   selectedBox,
-  onSelectBox,
-  onAddRectangle
-}) {
+  onSelectBox
+}, ref) => {
   const canvasRef = useRef(null);
   const [image, setImage] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -75,7 +74,7 @@ export default function BoundingBoxEditor({
     img.src = `/api/images/${endpoint}?path=${encodeURIComponent(imagePath)}`;
   };
 
-  // Function to create default rectangle
+  // Add a function to create a rectangle with the same logic as the default rectangle
   const createDefaultRectangle = () => {
     if (!image) return;
     
@@ -91,6 +90,87 @@ export default function BoundingBoxEditor({
     
     onDetectionsChange([defaultDetection]);
     onSelectBox(0); // Select the default rectangle
+  };
+
+  // Add a ref to expose the addRectangle function
+  const addRectangleRef = useRef();
+
+  // Update the addManualRectangle function to use the same logic as createDefaultRectangle
+  const addManualRectangle = () => {
+    if (!image) return;
+    
+    const newDetection = {
+      x: image.width / 2, // Center X (same as default)
+      y: image.height / 2, // Center Y (same as default)
+      width: image.width / 2, // Half width (same as default)
+      height: image.height / 2, // Half height (same as default)
+      confidence: 1.0,
+      class_name: "manual",
+      category: defaultCategory || null
+    };
+    
+    const updatedDetections = [...detections, newDetection];
+    onDetectionsChange(updatedDetections);
+    onSelectBox(updatedDetections.length - 1);
+  };
+
+  // Update the useEffect to call onAddRectangle with the addManualRectangle function
+  useEffect(() => {
+    if (onSelectBox) {
+      // Pass the function to the parent component
+      window.addRectangleFunction = addManualRectangle;
+    }
+  }, [image, detections, defaultCategory]);
+
+  // Expose the addRectangle function to the parent component
+  useImperativeHandle(ref, () => ({
+    addRectangle: addManualRectangle
+  }));
+
+  // Helper function to draw a single box
+  const drawSingleBox = (ctx, detection, index, isSelected, canvasWidth, canvasHeight) => {
+    const x = (detection.x / image.width) * canvasWidth;
+    const y = (detection.y / image.height) * canvasHeight;
+    const boxWidth = (detection.width / image.width) * canvasWidth;
+    const boxHeight = (detection.height / image.height) * canvasHeight;
+
+    // Box color and style based on selection
+    if (isSelected) {
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 3;
+      // Add selection highlight
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+      ctx.fillRect(x - boxWidth/2, y - boxHeight/2, boxWidth, boxHeight);
+      
+      // Draw resize handles for selected box
+      drawResizeHandles(ctx, x, y, boxWidth, boxHeight);
+    } else {
+      ctx.strokeStyle = '#00ff00';
+      ctx.lineWidth = 2;
+    }
+    
+    ctx.strokeRect(x - boxWidth/2, y - boxHeight/2, boxWidth, boxHeight);
+
+    // Draw box number and dimensions label (inside top-left corner of box)
+    const boxNumberText = `Box ${index + 1}`;
+    const dimensionText = `${Math.round(detection.width)} × ${Math.round(detection.height)}`;
+    const combinedText = `${boxNumberText} (${dimensionText})`;
+    
+    ctx.font = '12px Arial';
+    const textMetrics = ctx.measureText(combinedText);
+    const textWidth = textMetrics.width;
+    
+    // Position inside the top-left corner of the box
+    const labelX = x - boxWidth/2 + 5;
+    const labelY = y - boxHeight/2 + 15;
+    
+    // Draw background for the label (50% transparent)
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(labelX - 2, labelY - 12, textWidth + 4, 16);
+    
+    // Draw the combined text (box number + dimensions)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(combinedText, labelX, labelY);
   };
 
   const drawCanvas = () => {
@@ -126,57 +206,22 @@ export default function BoundingBoxEditor({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-    // Draw bounding boxes
+    // FIXED: Ensure selected box is ALWAYS on top for manipulation
+    // Problem: Currently older boxes (lower indices) appear on top of newer boxes
+    // Solution: Draw selected box last, regardless of its array position
+    
+    // Step 1: Draw ALL non-selected boxes first (in original array order)
     detections.forEach((detection, index) => {
-      const x = (detection.x / image.width) * canvas.width;
-      const y = (detection.y / image.height) * canvas.height;
-      const boxWidth = (detection.width / image.width) * canvas.width;
-      const boxHeight = (detection.height / image.height) * canvas.height;
-
-      // Box color and style based on selection
-      if (selectedBox === index) {
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = 3;
-        // Add selection highlight
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
-        ctx.fillRect(x - boxWidth/2, y - boxHeight/2, boxWidth, boxHeight);
-        
-        // Draw resize handles for selected box
-        drawResizeHandles(ctx, x, y, boxWidth, boxHeight);
-      } else {
-        ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 2;
-      }
-      
-      ctx.strokeRect(x - boxWidth/2, y - boxHeight/2, boxWidth, boxHeight);
-
-      // Draw dimensions near the bottom-right of the box
-      const dimensionText = `${Math.round(detection.width)} × ${Math.round(detection.height)}`;
-      ctx.font = '12px Arial';
-      const textMetrics = ctx.measureText(dimensionText);
-      const textWidth = textMetrics.width;
-      
-      // Position dimensions outside the box (bottom-right corner)
-      const dimX = x + boxWidth/2 + 5;
-      const dimY = y + boxHeight/2 + 15;
-      
-      // Draw background for dimensions
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(dimX - 2, dimY - 12, textWidth + 4, 16);
-      
-      // Draw dimensions text
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(dimensionText, dimX, dimY);
-
-      // Draw category label (top of box)
-      if (detection.category) {
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        ctx.fillRect(x - boxWidth/2, y - boxHeight/2 - 25, 120, 20);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
-        ctx.fillText(detection.category, x - boxWidth/2 + 5, y - boxHeight/2 - 10);
+      if (selectedBox !== index) {
+        drawSingleBox(ctx, detection, index, false, canvasWidth, canvasHeight);
       }
     });
+    
+    // Step 2: Draw the selected box LAST so it's always on top
+    // This allows manipulation even if other boxes would normally cover it
+    if (selectedBox !== null && selectedBox >= 0 && selectedBox < detections.length) {
+      drawSingleBox(ctx, detections[selectedBox], selectedBox, true, canvasWidth, canvasHeight);
+    }
   };
 
   const drawResizeHandles = (ctx, centerX, centerY, boxWidth, boxHeight) => {
@@ -186,19 +231,36 @@ export default function BoundingBoxEditor({
     const top = centerY - boxHeight/2;
     const bottom = centerY + boxHeight/2;
 
+    // Draw handles with white border for better visibility
     ctx.fillStyle = '#ff0000';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
     
     // Corner handles
     ctx.fillRect(left - handleSize/2, top - handleSize/2, handleSize, handleSize);
+    ctx.strokeRect(left - handleSize/2, top - handleSize/2, handleSize, handleSize);
+    
     ctx.fillRect(right - handleSize/2, top - handleSize/2, handleSize, handleSize);
+    ctx.strokeRect(right - handleSize/2, top - handleSize/2, handleSize, handleSize);
+    
     ctx.fillRect(left - handleSize/2, bottom - handleSize/2, handleSize, handleSize);
+    ctx.strokeRect(left - handleSize/2, bottom - handleSize/2, handleSize, handleSize);
+    
     ctx.fillRect(right - handleSize/2, bottom - handleSize/2, handleSize, handleSize);
+    ctx.strokeRect(right - handleSize/2, bottom - handleSize/2, handleSize, handleSize);
     
     // Edge handles
     ctx.fillRect(centerX - handleSize/2, top - handleSize/2, handleSize, handleSize);
+    ctx.strokeRect(centerX - handleSize/2, top - handleSize/2, handleSize, handleSize);
+    
     ctx.fillRect(centerX - handleSize/2, bottom - handleSize/2, handleSize, handleSize);
+    ctx.strokeRect(centerX - handleSize/2, bottom - handleSize/2, handleSize, handleSize);
+    
     ctx.fillRect(left - handleSize/2, centerY - handleSize/2, handleSize, handleSize);
+    ctx.strokeRect(left - handleSize/2, centerY - handleSize/2, handleSize, handleSize);
+    
     ctx.fillRect(right - handleSize/2, centerY - handleSize/2, handleSize, handleSize);
+    ctx.strokeRect(right - handleSize/2, centerY - handleSize/2, handleSize, handleSize);
   };
 
   const getMousePos = (event) => {
@@ -256,6 +318,7 @@ export default function BoundingBoxEditor({
     return null;
   };
 
+  // IMPROVED: Better box selection logic that prioritizes the selected box
   const isPointInBox = (mouseX, mouseY, boxIndex) => {
     const canvas = canvasRef.current;
     const detection = detections[boxIndex];
@@ -276,7 +339,7 @@ export default function BoundingBoxEditor({
   const handleMouseDown = (event) => {
     const pos = getMousePos(event);
     
-    // Check for resize handles first
+    // Check for resize handles first (highest priority)
     const handle = getResizeHandle(pos.x, pos.y);
     if (handle) {
       setIsResizing(true);
@@ -289,9 +352,22 @@ export default function BoundingBoxEditor({
       return;
     }
     
-    // Check if clicking on a box
-    for (let i = 0; i < detections.length; i++) {
-      if (isPointInBox(pos.x, pos.y, i)) {
+    // IMPROVED: Better box selection logic
+    // First check if clicking on the currently selected box (if any)
+    if (selectedBox !== null && isPointInBox(pos.x, pos.y, selectedBox)) {
+      // Clicking on already selected box - start dragging
+      setIsDragging(true);
+      setDragStart({
+        detection: { ...detections[selectedBox] },
+        mousePos: pos
+      });
+      return;
+    }
+    
+    // Check if clicking on any other box (from front to back for proper selection)
+    // Check in reverse order to prioritize boxes that appear on top visually
+    for (let i = detections.length - 1; i >= 0; i--) {
+      if (i !== selectedBox && isPointInBox(pos.x, pos.y, i)) {
         onSelectBox(i);
         setIsDragging(true);
         // Store both detection and mouse position for consistent reference
@@ -462,24 +538,6 @@ export default function BoundingBoxEditor({
     onSelectBox(null);
   };
 
-  const addManualRectangle = () => {
-    if (!image) return;
-    
-    const newDetection = {
-      x: image.width / 2,
-      y: image.height / 2,
-      width: Math.min(150, image.width / 4),
-      height: Math.min(150, image.height / 4),
-      confidence: 1.0,
-      class_name: "manual",
-      category: defaultCategory || null
-    };
-    
-    const updatedDetections = [...detections, newDetection];
-    onDetectionsChange(updatedDetections);
-    onSelectBox(updatedDetections.length - 1);
-  };
-
   const selectBox = (index) => {
     onSelectBox(index);
   };
@@ -540,10 +598,13 @@ export default function BoundingBoxEditor({
                   top: `${dropdownY}px`,
                   width: '120px',
                   height: '24px',
-                  pointerEvents: 'auto'
+                  pointerEvents: 'auto',
+                  backgroundColor: 'rgba(255, 255, 255, 0.5)', // 50% transparent
+                  // Ensure dropdown for selected box appears on top
+                  zIndex: selectedBox === index ? 1000 : 999
                 }}
               >
-                <option value="">Select Category</option>
+                <option value="">Box {index + 1} - Select Category</option>
                 {categories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -554,4 +615,6 @@ export default function BoundingBoxEditor({
       )}
     </div>
   );
-}
+});
+
+export default BoundingBoxEditor;

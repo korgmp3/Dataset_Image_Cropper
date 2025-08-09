@@ -1,7 +1,7 @@
 // Version Configuration - Easy to find and change
 export const APP_VERSION = {
-  version: "1.2.3",
-  buildDate: "2025-08-08",
+  version: "1.2.7",
+  buildDate: "2025-08-09",
   releaseNotes: [
     "Fixed bounding box resizing functionality",
     "Improved image progression after save/skip",

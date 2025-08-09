@@ -79,3 +79,6 @@ sample_data/output_folder/*
 # Temp files
 temp/
 tmp/
+
+# Input and Output folders
+sample_data/*
