@@ -1,0 +1,71 @@
+version: "3.8"
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile.ml
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./sample_data/input_folder:/data/input
+      - ./sample_data/output_folder:/data/output
+      - ./logs:/app/logs
+      - backend_data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - ML_ENABLED=true
+      - CUDA_VISIBLE_DEVICES=0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s  # Longer startup time for ML models
+    restart: unless-stopped
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 8G  # More memory for ML models
+        reservations:
+          memory: 4G
+      # Enable GPU access if available
+      # runtime: nvidia
+      # Uncomment the following if using Docker Compose 3.9+
+      # reservations:
+      #   devices:
+      #     - driver: nvidia
+      #       count: 1
+      #       capabilities: [gpu]
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - VITE_API_URL=/api
+      - VITE_ML_ENABLED=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  logs:
+    driver: local
+  backend_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+    name: image-crop-network-ml

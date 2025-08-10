@@ -31,6 +31,7 @@ A Docker-based web application for creating image datasets by cropping objects a
 ### Prerequisites
 - Docker and Docker Compose installed
 - At least 4GB RAM available for Docker
+- For ML version: 8GB RAM recommended, GPU optional but beneficial
 
 ### 1. Clone and Setup
 ```bash
@@ -50,14 +51,34 @@ mkdir -p sample_data/output_folder
 # sample_data/input_folder/birds/bird1.jpg
 ```
 
-### 3. Run the Application
+### 3. Choose Your Version
+
+#### Option A: Lightweight Version (Manual annotation only)
 ```bash
 docker-compose up --build
+```
+
+#### Option B: ML-Enhanced Version (AI object detection)
+```bash
+docker-compose -f docker-compose.ml.yml up --build
 ```
 
 ### 4. Access the Application
 - **Frontend UI**: http://localhost:3000
 - **Backend API**: http://localhost:8000/docs
+
+### 5. Version Comparison
+
+| Feature | Lightweight | ML-Enhanced |
+|---------|-------------|-------------|
+| Manual bounding boxes | ✅ | ✅ |
+| AI object detection | ❌ | ✅ |
+| Resource usage | Low | High |
+| Startup time | Fast | Slower |
+| GPU support | ❌ | ✅ |
+| Docker image size | ~500MB | ~5GB |
+
+> **💡 Tip**: Start with the lightweight version to familiarize yourself with the interface, then upgrade to ML-enhanced for AI features.
 
 ## 📁 Expected Folder Structure
 
@@ -143,6 +164,16 @@ sample_data/output_folder/
 - ✅ **Docker Ready**: One-command deployment
 - ✅ **Toast Notifications**: Non-blocking user feedback
 - ✅ **Default Bounding Box**: Automatic centered box on image load
+
+### ML-Enhanced Features (ML Version Only)
+- 🤖 **AI Object Detection**: Powered by Google OwlViT model
+- 🎯 **Text-based Detection**: Describe objects in natural language ("a cat", "a person")
+- ⚡ **CUDA Support**: Automatic GPU acceleration when available
+- 🔄 **Auto-detection**: Optional automatic detection on image load
+- 📝 **Custom Prompts**: Flexible text queries for object detection
+- 🎚️ **Confidence Control**: Adjustable detection threshold (1%-95%)
+
+> **📖 For detailed ML setup and usage guide, see [README.ml.md](README.ml.md)**
 
 ## 🔧 Configuration
 

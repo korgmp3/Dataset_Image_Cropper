@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import BoundingBoxEditor from './components/BoundingBoxEditor';
+import MLDetectionControls from './components/MLDetectionControls';
 import { 
   getCurrentImage, 
   cropAndSave, 
@@ -18,6 +19,9 @@ export default function App() {
   const [detections, setDetections] = useState([]);
   const [loading, setLoading] = useState(false);
   const [confidence, setConfidence] = useState(0.25);
+  
+  // ML detection state
+  const [autoDetectionEnabled, setAutoDetectionEnabled] = useState(true); // Default to ON
   
   // Folder and progress state
   const [folderPath, setFolderPath] = useState('/data/input');
@@ -89,6 +93,16 @@ export default function App() {
       
       if (image && image.image_path) {
         setCurrentImage(image);
+        // Clear previous detections when loading new image
+        setDetections([]);
+        
+        // Trigger auto-detection if enabled
+        if (autoDetectionEnabled) {
+          // Small delay to ensure image is fully loaded
+          setTimeout(() => {
+            triggerAutoDetection(image);
+          }, 500);
+        }
       } else {
         // No more images to process
         setCurrentImage(null);
@@ -102,6 +116,46 @@ export default function App() {
       setDetections([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Auto-detection function
+  const triggerAutoDetection = async (image) => {
+    if (!autoDetectionEnabled || !image?.image_path) return;
+    
+    try {
+      showToast('🤖 Auto-detecting objects...', 'info');
+      
+      // Import ML API functions dynamically to avoid issues if ML is not available
+      const { detectObjects, parseTextQueries, createDefaultQueries } = await import('./services/mlApi');
+      
+      // Create default queries from categories
+      const queries = createDefaultQueries(categories);
+      
+      if (queries.length === 0) {
+        showToast('No categories available for auto-detection', 'warning');
+        return;
+      }
+      
+      const result = await detectObjects(
+        image.image_path,
+        queries,
+        confidence
+      );
+      
+      if (result.success && result.detections) {
+        setDetections(result.detections);
+        showToast(
+          `🎯 Auto-detected ${result.detections.length} objects`,
+          result.detections.length > 0 ? 'success' : 'info'
+        );
+      } else {
+        showToast('No objects auto-detected', 'info');
+        setDetections([]);
+      }
+    } catch (error) {
+      console.error('Auto-detection error:', error);
+      showToast('Auto-detection failed: ' + error.message, 'warning');
     }
   };
 
@@ -498,6 +552,20 @@ export default function App() {
               </p>
             )}
           </div>
+
+          {/* ML Object Detection Controls */}
+          <MLDetectionControls
+            categories={categories}
+            currentImage={currentImage}
+            onDetectionsChange={updateDetections}
+            confidence={confidence}
+            setConfidence={setConfidence}
+            showToast={showToast}
+            showErrorToast={showErrorToast}
+            autoDetectionEnabled={autoDetectionEnabled}
+            setAutoDetectionEnabled={setAutoDetectionEnabled}
+            onAutoDetectionTrigger={triggerAutoDetection}
+          />
         </div>
 
         {/* Center - Image */}

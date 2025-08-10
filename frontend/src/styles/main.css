@@ -1226,3 +1226,282 @@ h1 {
 .reset-btn:hover {
   background-color: #0056b3;
 }
+
+/* ML Detection Controls */
+.ml-detection-controls {
+  background: #e8f5e8;
+  border: 2px solid #27ae60;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.ml-detection-controls h3 {
+  color: #27ae60;
+  margin-bottom: 15px;
+}
+
+.ml-status {
+  margin-bottom: 15px;
+}
+
+.status-indicator {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  display: inline-block;
+  margin-bottom: 5px;
+}
+
+.status-indicator.available {
+  background-color: #27ae60;
+  color: white;
+}
+
+.status-indicator.unavailable {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.device-info {
+  font-size: 11px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.detection-toggle {
+  margin-bottom: 15px;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #27ae60;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(26px);
+}
+
+.toggle-label {
+  position: absolute;
+  top: -25px;
+  left: 0;
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+  white-space: nowrap;
+}
+
+.detection-prompt {
+  margin-bottom: 15px;
+}
+
+.detection-prompt label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #333;
+}
+
+.detection-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.detection-textarea:focus {
+  outline: none;
+  border-color: #27ae60;
+  box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.2);
+}
+
+.prompt-controls {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reset-queries-btn {
+  padding: 6px 12px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.reset-queries-btn:hover {
+  background-color: #545b62;
+}
+
+.hint {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+}
+
+.confidence-control {
+  margin-bottom: 15px;
+}
+
+.confidence-control label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #333;
+}
+
+.confidence-slider {
+  width: 100%;
+  height: 5px;
+  border-radius: 5px;
+  background: #ddd;
+  outline: none;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.confidence-slider:hover {
+  opacity: 1;
+}
+
+.confidence-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #27ae60;
+  cursor: pointer;
+}
+
+.confidence-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #27ae60;
+  cursor: pointer;
+}
+
+.confidence-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.detection-action {
+  margin-bottom: 15px;
+}
+
+.detect-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.detect-btn:hover:not(:disabled) {
+  background-color: #229954;
+}
+
+.detect-btn:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.auto-detection-notice {
+  padding: 10px;
+  background-color: rgba(39, 174, 96, 0.1);
+  border-left: 4px solid #27ae60;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #333;
+}
+
+.auto-detection-notice p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.loading-spinner.small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Add Rectangle Button */
+.add-rectangle-btn {
+  width: 100%;
+  padding: 10px 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 15px;
+  transition: background-color 0.2s;
+}
+
+.add-rectangle-btn:hover {
+  background-color: #2980b9;
+}
